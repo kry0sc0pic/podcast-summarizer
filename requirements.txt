@@ -1,0 +1,6 @@
+streamlit
+openai
+elevenlabslib
+youtube-transcript-api
+uuid
+python-dotenv
