@@ -1,10 +1,11 @@
 import streamlit as st
-from helpers import get_video_id, get_transcript, create_uuid
+from helpers import get_video_id, get_transcript, create_uuid, get_token_count
 from dotenv import load_dotenv
 from elevenlabslib import *
 from config import LLMSettings, TextToSpeechSettings
 from openai import OpenAI
 import os
+
 
 # Load Environment Variables (Keys)
 load_dotenv()
@@ -38,12 +39,23 @@ def get_elevenlabs_voice():
 def get_llm_summary(transcript: str) -> str:
     client = get_openai_client()
     settings = LLMSettings()
+    token_count = get_token_count(transcript,settings.get_model())
+    n_chunks = len(transcript) // settings.chunk_size + (0 if len(transcript) % settings.chunk_size == 0 else 1)
+    msgs = [
+        {
+            "role": "system",
+            "content": settings.get_system_prompt(),
+        },
+    ]
+    for i in range(n_chunks):
+        msgs.append({
+            "role": "user",
+            "content": f"Transcript{i+1}/{n_chunks}\n{transcript[i*settings.chunk_size:min(len(transcript)+1,(i+1)*settings.chunk_size)]}"
+        })
+    print(f"Token Count: {token_count}")
     summary = client.chat.completions.create(
         messages=[
-            {
-                "role": "system",
-                "content": settings.get_system_prompt(),
-            },
+
             {
                 "role": "user",
                 "content": f"""Transcript
@@ -71,6 +83,9 @@ def get_tts_audio(summary: str) -> str:
 
 st.header("🎙 Podcast Summarizer")
 
+st.sidebar.title("Settings")
+should_generate_audio = st.sidebar.toggle("Generate Audio",value=True)
+
 link = st.text_input("Youtube Link (`youtube.com` or `youtu.be`)")
 
 if st.button("Summarize"):
@@ -86,7 +101,7 @@ if st.button("Summarize"):
         if transcript is None:
             st.error("Transcript not available")
         else:
-            with st.expander('Transcript'):
+            with st.expander(f'Transcript | Tokens'):
                 st.write(transcript)
             try:
                 with st.spinner("Summarizing"):
@@ -94,9 +109,12 @@ if st.button("Summarize"):
                 with st.expander('Summary'):
                     st.write(summary)
                 try:
-                    with st.spinner("Generating Audio"):
-                        audio = get_tts_audio(summary)
-                    st.audio(audio)
+                    if should_generate_audio:
+                        with st.spinner("Generating Audio"):
+                            audio = get_tts_audio(summary)
+                        st.audio(audio)
+                    else:
+                        st.warning("Audio generation is disabled")
                 except Exception as e:
                     st.error("Error generating audio")
                     print(e)

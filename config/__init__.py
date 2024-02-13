@@ -3,7 +3,8 @@ class LLMSettings:
     def __init__(self):
         self.model = 'gpt-3.5-turbo-0125'
         self.temperature = 0.7
-        self.system_prompt = """You are a bot that summarizes podcasts given a transcript by the user.
+        self.chunk_size = 15000 # if transcript is longer, it will be split into chunks of this size
+        self.system_prompt = """You are a bot that summarizes podcasts given a transcript by the user. Transcripts may be in one message or split across multiple messages
         """
 
     def get_model(self):

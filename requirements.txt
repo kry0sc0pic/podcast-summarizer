@@ -4,3 +4,4 @@ elevenlabslib
 youtube-transcript-api
 uuid
 python-dotenv
+tiktoken
